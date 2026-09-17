@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Manage Tasks - Habit Admin{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="mb-0">Habits / Tasks</h3>
+  <a href="{{ url_for('add_task') }}" class="btn btn-primary">+ Add Task</a>
+</div>
+
+<table class="table table-hover bg-white">
+  <thead>
+    <tr>
+      <th>Time</th>
+      <th>Title</th>
+      <th>Description</th>
+      <th>Status</th>
+      <th class="text-end">Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for task in tasks %}
+    <tr>
+      <td><span class="badge bg-secondary">{{ task.time_slot.strftime('%H:%M') }}</span></td>
+      <td>{{ task.title }}</td>
+      <td class="text-muted small">{{ task.description or '' }}</td>
+      <td>
+        {% if task.is_active %}<span class="badge bg-success">Active</span>
+        {% else %}<span class="badge bg-secondary">Inactive</span>{% endif %}
+      </td>
+      <td class="text-end">
+        <div class="btn-group btn-group-sm">
+          <a class="btn btn-outline-secondary" href="{{ url_for('edit_task', task_id=task.id) }}">Edit</a>
+          <form method="post" action="{{ url_for('toggle_task', task_id=task.id) }}">
+            <button class="btn btn-outline-warning" type="submit">{{ 'Deactivate' if task.is_active else 'Activate' }}</button>
+          </form>
+          <form method="post" action="{{ url_for('delete_task', task_id=task.id) }}"
+                onsubmit="return confirm('Delete this task and all its history? This cannot be undone.');">
+            <button class="btn btn-outline-danger" type="submit">Delete</button>
+          </form>
+        </div>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5" class="text-center text-muted py-4">No tasks yet. Add your first habit.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}

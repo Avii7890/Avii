@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if task else 'Add' }} Task - Habit Admin{% endblock %}
+{% block content %}
+
+<h3 class="mb-3">{{ 'Edit Task' if task else 'Add Task' }}</h3>
+
+<form method="post" class="card card-body" style="max-width: 500px;">
+  <div class="mb-3">
+    <label class="form-label">Title</label>
+    <input type="text" name="title" class="form-control" value="{{ task.title if task else '' }}" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Description (optional)</label>
+    <textarea name="description" class="form-control" rows="2">{{ task.description if task else '' }}</textarea>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Time slot</label>
+    <input type="time" name="time_slot" class="form-control"
+           value="{{ task.time_slot.strftime('%H:%M') if task else '' }}" required>
+  </div>
+  {% if task %}
+  <div class="form-check mb-3">
+    <input class="form-check-input" type="checkbox" name="is_active" id="is_active" {{ 'checked' if task.is_active }}>
+    <label class="form-check-label" for="is_active">Active</label>
+  </div>
+  {% endif %}
+  <div class="d-flex gap-2">
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a href="{{ url_for('tasks') }}" class="btn btn-outline-secondary">Cancel</a>
+  </div>
+</form>
+
+{% endblock %}

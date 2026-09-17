@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}Reports - Habit Admin{% endblock %}
+{% block content %}
+
+<h3 class="mb-3">Reports</h3>
+
+<ul class="nav nav-tabs mb-4">
+  <li class="nav-item"><a class="nav-link {{ 'active' if report_type == 'hourly' }}" href="{{ url_for('reports', type='hourly') }}">Hourly</a></li>
+  <li class="nav-item"><a class="nav-link {{ 'active' if report_type == 'daily' }}" href="{{ url_for('reports', type='daily') }}">Daily</a></li>
+  <li class="nav-item"><a class="nav-link {{ 'active' if report_type == 'weekly' }}" href="{{ url_for('reports', type='weekly') }}">Weekly</a></li>
+  <li class="nav-item"><a class="nav-link {{ 'active' if report_type == 'yearly' }}" href="{{ url_for('reports', type='yearly') }}">Yearly</a></li>
+</ul>
+
+{% if report_type == 'hourly' %}
+  <form method="get" class="row row-cols-auto g-2 align-items-center mb-3">
+    <input type="hidden" name="type" value="hourly">
+    <div class="col"><input type="date" name="date" class="form-control" value="{{ selected_date.isoformat() }}"></div>
+    <div class="col"><button class="btn btn-secondary">Go</button></div>
+  </form>
+
+  <div class="row mb-3">
+    <div class="col-4"><div class="card text-center border-secondary"><div class="card-body py-2"><div class="fs-5">{{ counts.pending }}</div><div class="text-muted small">Pending</div></div></div></div>
+    <div class="col-4"><div class="card text-center border-success"><div class="card-body py-2"><div class="fs-5 text-success">{{ counts.completed }}</div><div class="text-muted small">Completed</div></div></div></div>
+    <div class="col-4"><div class="card text-center border-danger"><div class="card-body py-2"><div class="fs-5 text-danger">{{ counts.failed }}</div><div class="text-muted small">Failed</div></div></div></div>
+  </div>
+
+  <div class="accordion" id="hourlyAccordion">
+    {% for hour, hour_logs in hours.items() %}
+    <div class="accordion-item {{ 'd-none' if not hour_logs }}">
+      <h2 class="accordion-header">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#hour{{ hour }}">
+          {{ '%02d:00' % hour }} &mdash; {{ hour_logs|length }} task(s)
+        </button>
+      </h2>
+      <div id="hour{{ hour }}" class="accordion-collapse collapse" data-bs-parent="#hourlyAccordion">
+        <div class="accordion-body">
+          {% for log in hour_logs %}
+          <div class="d-flex justify-content-between border-bottom py-1">
+            <span>{{ log.task.title }}</span>
+            <span>
+              {% if log.status == 'pending' %}<span class="badge bg-secondary">Pending</span>
+              {% elif log.status == 'completed' %}<span class="badge bg-success">Completed</span>
+              {% else %}<span class="badge bg-danger" title="{{ log.fail_reason }}">Failed</span>{% endif %}
+            </span>
+          </div>
+          {% if log.status == 'failed' and log.fail_reason %}
+            <div class="text-danger small">Reason: {{ log.fail_reason }}</div>
+          {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+{% elif report_type == 'daily' %}
+  <form method="get" class="row row-cols-auto g-2 align-items-center mb-3">
+    <input type="hidden" name="type" value="daily">
+    <div class="col"><input type="date" name="date" class="form-control" value="{{ selected_date.isoformat() }}"></div>
+    <div class="col"><button class="btn btn-secondary">Go</button></div>
+  </form>
+
+  <div class="row mb-3">
+    <div class="col-4"><div class="card text-center border-secondary"><div class="card-body py-2"><div class="fs-5">{{ counts.pending }}</div><div class="text-muted small">Pending</div></div></div></div>
+    <div class="col-4"><div class="card text-center border-success"><div class="card-body py-2"><div class="fs-5 text-success">{{ counts.completed }}</div><div class="text-muted small">Completed</div></div></div></div>
+    <div class="col-4"><div class="card text-center border-danger"><div class="card-body py-2"><div class="fs-5 text-danger">{{ counts.failed }}</div><div class="text-muted small">Failed</div></div></div></div>
+  </div>
+
+  <table class="table bg-white">
+    <thead><tr><th>Time</th><th>Task</th><th>Status</th><th>Fail Reason</th><th>Improve Tomorrow</th></tr></thead>
+    <tbody>
+      {% for log in logs %}
+      <tr>
+        <td>{{ log.task.time_slot.strftime('%H:%M') }}</td>
+        <td>{{ log.task.title }}</td>
+        <td>
+          {% if log.status == 'pending' %}<span class="badge bg-secondary">Pending</span>
+          {% elif log.status == 'completed' %}<span class="badge bg-success">Completed</span>
+          {% else %}<span class="badge bg-danger">Failed</span>{% endif %}
+        </td>
+        <td class="text-danger small">{{ log.fail_reason or '' }}</td>
+        <td class="text-primary small">{{ log.improvement_note or '' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="text-center text-muted">No data for this date.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+{% elif report_type == 'weekly' %}
+  <form method="get" class="row row-cols-auto g-2 align-items-center mb-3">
+    <input type="hidden" name="type" value="weekly">
+    <div class="col"><input type="date" name="date" class="form-control" value="{{ week_start.isoformat() }}"></div>
+    <div class="col"><button class="btn btn-secondary">Go</button></div>
+  </form>
+  <p class="text-muted">Week of {{ week_start.strftime('%d %b') }} &ndash; {{ week_end.strftime('%d %b %Y') }}</p>
+
+  <canvas id="weeklyChart" height="90" class="mb-4"></canvas>
+
+  <table class="table bg-white">
+    <thead><tr><th>Date</th><th>Pending</th><th>Completed</th><th>Failed</th><th>Completion Rate</th></tr></thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td>{{ row.date.strftime('%A %d %b') }}</td>
+        <td>{{ row.counts.pending }}</td>
+        <td class="text-success">{{ row.counts.completed }}</td>
+        <td class="text-danger">{{ row.counts.failed }}</td>
+        <td>{{ row.rate }}%</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+{% elif report_type == 'yearly' %}
+  <form method="get" class="row row-cols-auto g-2 align-items-center mb-3">
+    <input type="hidden" name="type" value="yearly">
+    <div class="col"><input type="number" name="year" class="form-control" value="{{ year }}"></div>
+    <div class="col"><button class="btn btn-secondary">Go</button></div>
+  </form>
+
+  <canvas id="yearlyChart" height="90" class="mb-4"></canvas>
+
+  <table class="table bg-white">
+    <thead><tr><th>Month</th><th>Pending</th><th>Completed</th><th>Failed</th><th>Completion Rate</th></tr></thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td>{{ month_names[row.month - 1] }}</td>
+        <td>{{ row.counts.pending }}</td>
+        <td class="text-success">{{ row.counts.completed }}</td>
+        <td class="text-danger">{{ row.counts.failed }}</td>
+        <td>{{ row.rate }}%</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+{% if report_type in ('weekly', 'yearly') %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+const ctx = document.getElementById('{{ "weeklyChart" if report_type == "weekly" else "yearlyChart" }}');
+new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: {{ chart_labels|tojson }},
+    datasets: [{
+      label: 'Completion rate (%)',
+      data: {{ chart_rates|tojson }},
+      backgroundColor: 'rgba(25, 135, 84, 0.6)',
+    }]
+  },
+  options: {
+    scales: { y: { beginAtZero: true, max: 100 } }
+  }
+});
+</script>
+{% endif %}
+{% endblock %}
