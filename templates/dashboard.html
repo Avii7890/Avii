@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Habit Admin{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h3 class="mb-0">
+    {% if selected_date == today %}Today{% else %}{{ selected_date.strftime('%A') }}{% endif %}
+    &mdash; {{ selected_date.strftime('%d %b %Y') }}
+  </h3>
+  <div class="btn-group">
+    <a class="btn btn-outline-secondary" href="{{ url_for('dashboard', date=prev_date.isoformat()) }}">&laquo; Prev</a>
+    <a class="btn btn-outline-secondary" href="{{ url_for('dashboard', date=today.isoformat()) }}">Today</a>
+    <a class="btn btn-outline-secondary" href="{{ url_for('dashboard', date=next_date.isoformat()) }}">Next &raquo;</a>
+  </div>
+</div>
+
+<div class="row mb-3">
+  <div class="col-4"><div class="card text-center border-secondary"><div class="card-body py-2">
+    <div class="fs-4">{{ counts.pending }}</div><div class="text-muted small">Pending</div>
+  </div></div></div>
+  <div class="col-4"><div class="card text-center border-success"><div class="card-body py-2">
+    <div class="fs-4 text-success">{{ counts.completed }}</div><div class="text-muted small">Completed</div>
+  </div></div></div>
+  <div class="col-4"><div class="card text-center border-danger"><div class="card-body py-2">
+    <div class="fs-4 text-danger">{{ counts.failed }}</div><div class="text-muted small">Failed</div>
+  </div></div></div>
+</div>
+
+{% if not logs %}
+<div class="alert alert-info">No tasks scheduled. <a href="{{ url_for('add_task') }}">Add a task</a> to get started.</div>
+{% endif %}
+
+<div class="list-group mb-4">
+  {% for log in logs %}
+  <div class="list-group-item">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+      <div>
+        <span class="badge bg-secondary time-badge">{{ log.task.time_slot.strftime('%H:%M') }}</span>
+        <strong>{{ log.task.title }}</strong>
+        {% if log.status == 'pending' %}<span class="badge bg-secondary">Pending</span>
+        {% elif log.status == 'completed' %}<span class="badge bg-success">Completed</span>
+        {% else %}<span class="badge bg-danger">Failed</span>{% endif %}
+        {% if log.task.description %}<div class="text-muted small">{{ log.task.description }}</div>{% endif %}
+        {% if log.status == 'failed' and log.fail_reason %}
+          <div class="text-danger small mt-1"><strong>Reason:</strong> {{ log.fail_reason }}</div>
+        {% endif %}
+        {% if log.improvement_note %}
+          <div class="text-primary small"><strong>Do better tomorrow:</strong> {{ log.improvement_note }}</div>
+        {% endif %}
+      </div>
+      <div class="btn-group btn-group-sm">
+        <form method="post" action="{{ url_for('complete_log', log_id=log.id) }}">
+          <button class="btn btn-outline-success" type="submit">Complete</button>
+        </form>
+        <button class="btn btn-outline-danger" type="button" data-bs-toggle="modal" data-bs-target="#failModal{{ log.id }}">Fail</button>
+        {% if log.status != 'pending' %}
+        <form method="post" action="{{ url_for('reset_log', log_id=log.id) }}">
+          <button class="btn btn-outline-secondary" type="submit">Reset</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="failModal{{ log.id }}" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form method="post" action="{{ url_for('fail_log', log_id=log.id) }}">
+          <div class="modal-header">
+            <h5 class="modal-title">Why did "{{ log.task.title }}" fail?</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Reason for failure</label>
+              <textarea name="fail_reason" class="form-control" rows="2" required>{{ log.fail_reason or '' }}</textarea>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">What can I do tomorrow better?</label>
+              <textarea name="improvement_note" class="form-control" rows="2">{{ log.improvement_note or '' }}</textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-danger">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <h5 class="card-title">Daily reflection &mdash; what can I do tomorrow better?</h5>
+    <form method="post" action="{{ url_for('save_reflection') }}">
+      <input type="hidden" name="log_date" value="{{ selected_date.isoformat() }}">
+      <textarea name="note" class="form-control mb-2" rows="3" placeholder="Overall notes for tomorrow...">{{ reflection.note if reflection else '' }}</textarea>
+      <button type="submit" class="btn btn-primary btn-sm">Save reflection</button>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

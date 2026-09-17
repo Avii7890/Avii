@@ -1,0 +1,12 @@
+body {
+  background-color: #f5f6f8;
+}
+
+.time-badge {
+  min-width: 55px;
+  display: inline-block;
+}
+
+.list-group-item {
+  border-left: 4px solid transparent;
+}
