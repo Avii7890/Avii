@@ -77,4 +77,19 @@ create_admin.py   CLI to create/reset an admin login
 schema.sql        Reference SQL (database/user + table DDL)
 templates/        Jinja2 templates (Bootstrap 5 + Chart.js)
 static/           CSS
+tests/            Pytest suite (uses in-memory SQLite, no MySQL needed)
+.github/workflows/ci.yml   GitHub Actions: lint + tests on every push/PR
 ```
+
+## Running tests / CI
+
+The test suite doesn't need MySQL — it swaps in an in-memory SQLite database.
+
+```bash
+pip install -r requirements-dev.txt
+pytest -v
+```
+
+A GitHub Actions workflow (`.github/workflows/ci.yml`) runs the same lint +
+test steps automatically on every push and pull request, so breakage is
+caught before you pull the branch down to run it locally.
